@@ -1,0 +1,21 @@
+[Header]
+[Imports]
+[Code]
+[Relocs]
+[Exports]
+
+[Header]
+MagicNum: word = 0x0B07
+ImportCount: word;
+CodeSize: word;
+RelocCount: word;
+ExportCount: word;
+
+[ImportEntry]
+NameLen: word;
+Name: array[0..NameLen] of char;
+
+[Code]
+sdlkajfasldkjfalsdhfkajsdhf
+
+[RelocEntry]
