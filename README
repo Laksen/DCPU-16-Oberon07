@@ -1,0 +1,20 @@
+Requirements to compile the compiler:
+   Freepacal in some version older than 2.0 I guess
+
+   Run: fpc doc.lpr
+
+----------------------------------
+
+Usage:
+
+So far only supports looking for .m files in the same directory. They probably have to be case-sensitive on filesystems that need that. Only tested on windows
+
+doc <name of file>
+
+Example:
+doc dither
+
+Produces:
+mem.dmp (compatible with Notch's emulator, big endian raw dump)
+mem.dcpu16 (compatible with DCPU-16 studio, little endian raw dump)
+mem.dhex (0x10co.de compatible, little endian hex dump with DAT 0x* appended)
