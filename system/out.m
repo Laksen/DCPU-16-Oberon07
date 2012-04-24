@@ -134,8 +134,10 @@ MODULE out;
    PROCEDURE WriteStr*(c: ARRAY OF CHAR);
    VAR i: INTEGER;
    BEGIN
-      FOR i := 0 TO LEN(c)-1 DO
+      i := 0;
+      WHILE c[i] # 00X DO
          WriteChar(c[i]);
+         INC(i);
       END;
    END WriteStr;
    

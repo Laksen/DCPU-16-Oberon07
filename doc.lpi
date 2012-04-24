@@ -31,8 +31,8 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="dither2"/>
-        <WorkingDirectory Value="C:\Users\jepjoh2\Desktop\projects\dcober\test"/>
+        <CommandLineParams Value="test2"/>
+        <WorkingDirectory Value="C:\Users\jepjoh2\Desktop\projects\dcob\f"/>
       </local>
     </RunParams>
     <Units Count="6">

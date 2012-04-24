@@ -1929,6 +1929,14 @@ var fs: TStream;
                   begin
                      tmp := Expression;
 
+                     if (tmp.Loc.Typ = ltConst) and
+                        Same(tmp.Typ, @TypeChar) and
+                        (mpt^.symType^.Fields[i].typ^.TypeKind in [typArray, typOpenArray]) then
+                     begin
+                        tmp.Typ := ArrayType(1, @TypeChar);
+                        tmp.Loc.Val := AllocateString(chr(tmp.Loc.Val));
+                     end;
+
                      if mpt^.symType^.Fields[i].Typ^.TypeKind = typOpenArray then
                      begin
                         Instruction(A_SET, PushLoc, GetLen(tmp));
@@ -1962,6 +1970,14 @@ var fs: TStream;
                      if IsByref(mpt^.symType^.Fields[i]) then
                      begin
                         tmp := Expression;
+
+                        if (tmp.Loc.Typ = ltConst) and
+                           Same(tmp.Typ, @TypeChar) and
+                           (mpt^.symType^.Fields[i].typ^.TypeKind in [typArray, typOpenArray]) then
+                        begin
+                           tmp.Typ := ArrayType(1, @TypeChar);
+                           tmp.Loc.Val := AllocateString(chr(tmp.Loc.Val));
+                        end;
 
                         if mpt^.symType^.Fields[i].Typ^.TypeKind = typOpenArray then
                         begin
@@ -2424,7 +2440,8 @@ var fs: TStream;
             else
                Error('Operator not applicable to pointer type');
          end
-         else if same(r2.Typ, @TypeBool) then
+         else if same(r2.Typ, @TypeBool) or
+                 same(r2.Typ, @TypeChar) then
          begin
             MakeReadable(r2);
 
@@ -2433,7 +2450,7 @@ var fs: TStream;
             else if tok = tkNEqual then
                Instruction(A_IFN, result, r2)
             else
-               Error('Operator not applicable to boolean');
+               Error('Operator not applicable to type');
          end
          else if same(result.Typ, @TypeSet) then
          begin
@@ -3350,6 +3367,14 @@ var fs: TStream;
                begin
                   expr := Expression;
 
+                  if (expr.Loc.Typ = ltConst) and
+                     Same(expr.Typ, @TypeChar) and
+                     (sym^.symType^.Fields[i].typ^.TypeKind in [typArray, typOpenArray]) then
+                  begin
+                     expr.Typ := ArrayType(1, @TypeChar);
+                     expr.Loc.Val := AllocateString(chr(expr.Loc.Val));
+                  end;
+
                   if sym^.symType^.Fields[i].Typ^.TypeKind = typOpenArray then
                   begin
                      Instruction(A_SET, PushLoc, GetLen(expr));
@@ -3381,6 +3406,14 @@ var fs: TStream;
                   if IsByref(sym^.symType^.Fields[i]) then
                   begin
                      expr := Expression;
+
+                     if (expr.Loc.Typ = ltConst) and
+                        Same(expr.Typ, @TypeChar) and
+                        (sym^.symType^.Fields[i].typ^.TypeKind in [typArray, typOpenArray]) then
+                     begin
+                        expr.Typ := ArrayType(1, @TypeChar);
+                        expr.Loc.Val := AllocateString(chr(expr.Loc.Val));
+                     end;
 
                      if sym^.symType^.Fields[i].Typ^.TypeKind = typOpenArray then
                      begin
