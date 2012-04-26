@@ -127,6 +127,13 @@ begin
    result.Loc.Typ := ltPop;
 end;
 
+function PickLoc(o: word): TExpr;
+begin
+   result.Typ := nil;
+   result.Loc.Typ := ltPick;
+   result.Loc.Offset := o;
+end;
+
 function Compile(const AName: string): PSymbol; forward;
 
 function DoCompile(const AName: string): PSymbol;
@@ -141,16 +148,17 @@ begin
    end;
 end;
 
-function encode(const a: TExpr; out w: word; out emitword: boolean): byte;
+function encode(const a: TExpr; out w: word; out emitword: boolean; lvalue: boolean): byte;
 begin
    case a.Loc.Typ of
       ltConst:
          begin
-            if a.loc.val <= $1F then
+            if ((a.loc.val <= 30) or
+               (a.Loc.Val = $FFFF)) and (not lvalue) then
             begin
                emitword := false;
                w := 0;
-               result := $20+a.loc.val;
+               result := $20+a.loc.val+1;
             end
             else
             begin
@@ -196,13 +204,21 @@ begin
          end;
       ltPush:
          begin
+            if not lvalue then Writeln('Using push as r-value');
             emitword := false;
-            result := $1A;
+            result := $18;
          end;
       ltPop:
          begin
+            if lvalue then Writeln('Using pop as r-value');
             emitword := false;
             result := $18;
+         end;
+      ltPick:
+         begin
+            emitword := true;
+            w := a.Loc.Offset;
+            result := $1A;
          end;
    else
       raise exception.Create('Not implemented');
@@ -239,7 +255,7 @@ begin
                result := 'PC'
             else if a.reg = V_SP then
                result := 'SP'
-            else if a.reg = V_O then
+            else if a.reg = V_EX then
                result := 'O';
          end;
       ltRegOffset:
@@ -250,10 +266,23 @@ begin
                result := 'PC'
             else if a.reg = V_SP then
                result := 'SP'
-            else if a.reg = V_O then
+            else if a.reg = V_EX then
                result := 'O';
 
             result := '['+result+'+0x'+IntToHex(a.Offset, 4)+']';
+         end;
+      ltRegInd:
+         begin
+            if a.reg < 8 then
+               result := RegLut[a.reg]
+            else if a.reg = V_PC then
+               result := 'PC'
+            else if a.reg = V_SP then
+               result := 'SP'
+            else if a.reg = V_EX then
+               result := 'O';
+
+            result := '['+result+']';
          end;
       ltGlobVar:
          result := '[0x'+inttohex(a.Addr, 4)+']';
@@ -270,12 +299,14 @@ begin
          result := 'PUSH';
       ltPop:
          result := 'POP';
+      ltPick:
+         result := '[SP+'+inttohex(a.Offset, 4)+']';
    else
       WriteStr(result, a.typ);
    end;
 end;
 
-procedure Instruction(AOp: TOp; const A,B: TExpr);
+procedure Instruction(AOp: TOp; const B,A: TExpr);
 var oper, va,vb: word;
     wa, wb: word;
     ea, eb: boolean;
@@ -285,14 +316,14 @@ begin
 
    oper := ord(AOp);
 
-   wa := Encode(A, va, ea);
-   wb := Encode(B, vb, eb);
+   wa := Encode(A, va, ea, false);
+   wb := Encode(B, vb, eb, true);
 
    EmitWord(oper or (wa shl OP_A) or (wb shl OP_B));
    if ea then EmitWord(va);
    if eb then EmitWord(vb);
 
-   //writeln(AOp, ' ', dumploc(a.loc):8,', ', dumploc(b.loc));
+   writeln(AOp, ' ', dumploc(b.loc):8,', ', dumploc(a.loc));
 end;
 
 procedure ExtInstruction(AOp: TExtOp; const A: TExpr);
@@ -300,14 +331,14 @@ var oper, va,vb: word;
     wa, wb: word;
     ea, eb: boolean;
 begin
-   oper := ord(AOp);
+   oper := ExtOps[AOp];
 
-   wa := Encode(A, va, ea);
+   wa := Encode(A, va, ea, false);
 
-   EmitWord((oper shl OP_A) or (wa shl OP_B));
+   EmitWord((oper shl OP_B) or (wa shl OP_A));
    if ea then EmitWord(va);
 
-   //writeln(AOp, ' ', dumploc(a.loc));
+   writeln(AOp, ' ', dumploc(a.loc));
 end;
 
 procedure EnterProc(AdjSP: longint);
@@ -382,7 +413,9 @@ var fs: TStream;
             Instruction(A_SET, RegLoc(i), PopLoc);
 
             regs[i] := true;
-         end;
+         end
+         else
+            regs[i] := false;
    end;
 
    procedure Unspill(Level: longint);
@@ -873,12 +906,12 @@ var fs: TStream;
    function AddJmp: word;
    begin
       result := codeCounter+2;
-      Instruction(A_ADD, RegLoc(V_PC), ConstLoc($FFFF));
+      Instruction(A_ADD, RegLoc(V_PC), ConstLoc($FEFE));
    end;
 
    procedure FixJmp(l: word);
    begin
-      code[l-1] := codeCounter-l+1;
+      code[l-1] := codeCounter-l;
    end;
 
    function Token: TToken;
@@ -964,12 +997,17 @@ var fs: TStream;
    begin
       Consume(tkLBracket);
 
-      result := ConstElement;
-      while token = tkComma do
+      if token <> tkRBracket then
       begin
-         Consume(tkComma);
-         result := result or ConstElement;
-      end;
+         result := ConstElement;
+         while token = tkComma do
+         begin
+            Consume(tkComma);
+            result := result or ConstElement;
+         end;
+      end
+      else
+         result := 0;
 
       Consume(tkRBracket);
    end;
@@ -1605,8 +1643,8 @@ var fs: TStream;
                         else
                         begin
                            MakeWritable(result);
-                           Instruction(A_IFG, result, ConstLoc($7FFF));
-                           Instruction(A_MUL, result, ConstLoc(-1));
+                           Instruction(A_IFU, result, ConstLoc(0));
+                           Instruction(A_MLI, result, ConstLoc(-1));
                         end;
                      end
                      else if same(result.typ, @TypeReal) then
@@ -1619,8 +1657,8 @@ var fs: TStream;
                         else
                         begin
                            MakeWritable(result);
-                           Instruction(A_IFG, result, ConstLoc($7FFF));
-                           Instruction(A_MUL, result, ConstLoc(-1));
+                           Instruction(A_IFU, result, ConstLoc(0));
+                           Instruction(A_MLI, result, ConstLoc(-1));
                         end;
                      end
                      else if same(result.typ, @TypeSet) then
@@ -1723,26 +1761,7 @@ var fs: TStream;
 
                      MakeWritable(result);
 
-                     {
-                        IFG x, $8000
-                        SET PC, l
-                        SHR x, y
-                        SET PC, l2
-                     l:
-                        XOR x, 0xFFFF
-                        SHR x,y
-                        XOR x, 0xFFFF
-                     l2:
-                     }
-                     Instruction(A_IFG, result, ConstLoc($7FFF));
-                     l := AddJmp;
-                     Instruction(A_SHR, result, tmp);
-                     l2 := AddJmp;
-                     FixJmp(l);
-                     Instruction(A_XOR, result, ConstLoc($FFFF));
-                     Instruction(A_SHR, result, tmp);
-                     Instruction(A_XOR, result, ConstLoc($FFFF));
-                     FixJmp(l2);
+                     Instruction(A_ASR, result, tmp);
 
                      Unuse(tmp);
                   end;
@@ -1758,7 +1777,7 @@ var fs: TStream;
                      MakeWritable(result);
 
                      Instruction(A_SHR, result, tmp);
-                     Instruction(A_BOR, result, RegLoc(V_O));
+                     Instruction(A_BOR, result, RegLoc(V_EX));
 
                      Unuse(tmp);
                   end;
@@ -1773,26 +1792,7 @@ var fs: TStream;
                      else
                      begin
                         MakeWritable(result);
-                        {
-                           IFG x, $8000
-                           SET PC, l
-                           SHR x, y
-                           SET PC, l2
-                        l:
-                           XOR x, 0xFFFF
-                           SHR x,y
-                           XOR x, 0xFFFF
-                        l2:
-                        }
-                        Instruction(A_IFG, result, ConstLoc($7FFF));
-                        l := AddJmp;
-                        Instruction(A_SHR, result, ConstLoc(RealFractionBits));
-                        l2 := AddJmp;
-                        FixJmp(l);
-                        Instruction(A_XOR, result, ConstLoc($FFFF));
-                        Instruction(A_SHR, result, ConstLoc(RealFractionBits));
-                        Instruction(A_XOR, result, ConstLoc($FFFF));
-                        FixJmp(l2);
+                        Instruction(A_ASR, result, ConstLoc(RealFractionBits));
                      end;
 
                      result.Typ := @TypeInteger;
@@ -1855,44 +1855,12 @@ var fs: TStream;
                      result := Designator(false,mpt);
                      result := ConstLoc(TypeSize(result.Typ));
                   end;
-               inbMultShift:
+               inbHWN:
                   begin
-                     Result := Expression;
-                     Consume(tkComma);
-                     r2 := Expression;
-
-                     tmp.Loc.Typ := ltReg;
-                     tmp.Loc.Reg := AllocReg;
-
-                     MakeWritable(result);
-                     MakeReadable(r2);
-
-                     Instruction(A_MUL, result, r2);
-                     Instruction(A_SET, tmp, RegLoc(V_O));
-
-                     Unuse(r2);
-
-                     consume(tkComma);
-
-                     r2 := Expression;
-
-                     MakeReadable(r2);
-
-                     if r2.Loc.Typ = ltConst then
-                     begin
-                        Instruction(A_SHL, tmp, ConstLoc(16-r2.Loc.Val));
-                        Instruction(A_SHR, result, ConstLoc(r2.loc.val));
-                        Instruction(A_BOR, result, tmp);
-                     end
-                     else
-                     begin
-                        Instruction(A_SHR, result, r2);
-                        Instruction(A_SHR, tmp, r2);
-                        Instruction(A_BOR, result, RegLoc(V_O));
-
-                        Unuse(r2);
-                     end;
-                  end;
+                     result := RegLoc(AllocReg);
+                     ExtInstruction(A_HWN, result);
+                     result.Typ := @TypeInteger;
+                  end
             else
                Error('Bad inbuilt function');
             end;
@@ -2004,7 +1972,7 @@ var fs: TStream;
                   end;
 
                   if i < length(mpt^.symType^.Fields) then
-                     writeln('Expected more parameters');
+                     Error('Expected more parameters');
                end;
 
                ExtInstruction(A_JSR, r2);
@@ -2110,43 +2078,18 @@ var fs: TStream;
             case tok of
                tkMul:
                   if same(result.Typ, @TypeInteger) then
-                     Instruction(A_MUL, result, r2)
+                     Instruction(A_MLI, result, r2)
                   else if same(result.Typ, @TypeReal) then
                   begin
-                     MakeWritable(r2);
-
-                     tmp := RegLoc(AllocReg);
-                     Instruction(A_SET, tmp, ConstLoc(0));
-
-                     Instruction(A_IFG, ConstLoc($8000), result);
-                     l := AddJmp;
-                     Instruction(A_XOR, result, ConstLoc($FFFF));
-                     Instruction(A_ADD, result, ConstLoc(1));
-                     Instruction(A_XOR, tmp, ConstLoc(1));
-                     FixJmp(l);
-
-                     Instruction(A_IFG, ConstLoc($8000), r2);
-                     l := AddJmp;
-                     Instruction(A_XOR, r2, ConstLoc($FFFF));
-                     Instruction(A_ADD, r2, ConstLoc(1));
-                     Instruction(A_XOR, tmp, ConstLoc(1));
-                     FixJmp(l);
+                     MakeReadable(r2);
 
                      tmp2 := RegLoc(AllocReg);
-                     Instruction(A_MUL, result, r2);
-                     Instruction(A_SET, tmp2, RegLoc(V_O));
+                     Instruction(A_MLI, result, r2);
+                     Instruction(A_SET, tmp2, RegLoc(V_EX));
                      Instruction(A_SHR, result, ConstLoc(RealFractionBits));
                      Instruction(A_SHL, tmp2, ConstLoc(16-RealFractionBits));
                      Instruction(A_BOR, result, tmp2);
                      Unuse(tmp2);
-
-                     Instruction(A_IFN, tmp,  ConstLoc(1));
-                     l := AddJmp;
-                     Instruction(A_XOR, result, ConstLoc($FFFF));
-                     Instruction(A_ADD, result, ConstLoc(1));
-                     FixJmp(l);
-
-                     Unuse(tmp);
                   end
                   else if same(result.Typ, @TypeBool) then
                      Instruction(A_AND, result, r2)
@@ -2159,72 +2102,24 @@ var fs: TStream;
                      Instruction(A_XOR, result, r2)
                   else if same(result.Typ, @TypeReal) then
                   begin
-                     MakeWritable(r2);
-
-                     tmp := RegLoc(AllocReg);
-                     Instruction(A_SET, tmp, ConstLoc(0));
-
-                     Instruction(A_IFG, ConstLoc($8000), result);
-                     l := AddJmp;
-                     Instruction(A_XOR, result, ConstLoc($FFFF));
-                     Instruction(A_ADD, result, ConstLoc(1));
-                     Instruction(A_XOR, tmp, ConstLoc(1));
-                     FixJmp(l);
-
-                     Instruction(A_IFG, ConstLoc($8000), r2);
-                     l := AddJmp;
-                     Instruction(A_XOR, r2, ConstLoc($FFFF));
-                     Instruction(A_ADD, r2, ConstLoc(1));
-                     Instruction(A_XOR, tmp, ConstLoc(1));
-                     FixJmp(l);
+                     MakeReadable(r2);
 
                      tmp2 := RegLoc(AllocReg);
                      Instruction(A_DIV, result, r2);
-                     Instruction(A_SET, tmp2, RegLoc(V_O));
+                     Instruction(A_SET, tmp2, RegLoc(V_EX));
                      Instruction(A_SHL, result, ConstLoc(RealFractionBits));
                      Instruction(A_SHR, tmp2, ConstLoc(16-RealFractionBits));
                      Instruction(A_BOR, result, tmp2);
                      Unuse(tmp2);
-
-                     Instruction(A_IFN, tmp,  ConstLoc(1));
-                     l := AddJmp;
-                     Instruction(A_XOR, result, ConstLoc($FFFF));
-                     Instruction(A_ADD, result, ConstLoc(1));
-                     FixJmp(l);
-                     Unuse(tmp);
                   end
                   else
                      error('Syntax error');
                tkDiv:
                   if same(result.Typ, @TypeInteger) then
                   begin
-                     MakeWritable(r2);
+                     MakeReadable(r2);
 
-                     tmp := RegLoc(AllocReg);
-                     Instruction(A_SET, tmp, ConstLoc(0));
-
-                     Instruction(A_IFG, ConstLoc($8000), result);
-                     l := AddJmp;
-                     Instruction(A_XOR, result, ConstLoc($FFFF));
-                     Instruction(A_ADD, result, ConstLoc(1));
-                     Instruction(A_XOR, tmp, ConstLoc(1));
-                     FixJmp(l);
-
-                     Instruction(A_IFG, ConstLoc($8000), r2);
-                     l := AddJmp;
-                     Instruction(A_XOR, r2, ConstLoc($FFFF));
-                     Instruction(A_ADD, r2, ConstLoc(1));
-                     Instruction(A_XOR, tmp, ConstLoc(1));
-                     FixJmp(l);
-
-                     Instruction(A_DIV, result, r2);
-
-                     Instruction(A_IFN, tmp,  ConstLoc(1));
-                     l := AddJmp;
-                     Instruction(A_XOR, result, ConstLoc($FFFF));
-                     Instruction(A_ADD, result, ConstLoc(1));
-                     FixJmp(l);
-                     Unuse(tmp);
+                     Instruction(A_DVI, result, r2);
                   end
                   else
                      error('Syntax error');
@@ -2283,8 +2178,7 @@ var fs: TStream;
             else
             begin
                MakeWritable(result);
-               Instruction(A_XOR, result, ConstLoc($FFFF));
-               Instruction(A_ADD, result, ConstLoc(1));
+               Instruction(A_MLI, result, ConstLoc($FFFF));
             end;
          end
          else if same(result.typ, @TypeInteger) then
@@ -2294,8 +2188,7 @@ var fs: TStream;
             else
             begin
                MakeWritable(result);
-               Instruction(A_XOR, result, ConstLoc($FFFF));
-               Instruction(A_ADD, result, ConstLoc(1));
+               Instruction(A_MLI, result, ConstLoc($FFFF));
             end;
          end
          else
@@ -2473,31 +2366,13 @@ var fs: TStream;
             else if tok = tkNEqual then
                Instruction(A_IFN, result, r2)
             else if tok = tkLess then
-            begin
-               MakeWritable(result);
-               Instruction(A_SUB, result, r2);
-               Instruction(A_IFB, result, ConstLoc($8000));
-            end
+               Instruction(A_IFU, result, r2)
             else if tok = tkLEqual then
-            begin
-               MakeWritable(result);
-               Instruction(A_SUB, result, r2);
-               Instruction(A_SUB, result, ConstLoc(1));
-               Instruction(A_IFB, result, ConstLoc($8000));
-            end
+               Instruction(A_IFU, r2, result)
             else if tok = tkGreater then
-            begin
-               MakeWritable(r2);
-               Instruction(A_SUB, r2, result);
-               Instruction(A_IFB, r2, ConstLoc($8000));
-            end
+               Instruction(A_IFA, result, r2)
             else if tok = tkGEqual then
-            begin
-               MakeWritable(r2);
-               Instruction(A_SUB, r2, result);
-               Instruction(A_SUB, r2, ConstLoc(1));
-               Instruction(A_IFB, r2, ConstLoc($8000));
-            end
+               Instruction(A_IFA, r2, result)
             else if tok = tkIn then
             begin
                MakeReadable(result);
@@ -2515,7 +2390,13 @@ var fs: TStream;
          Unuse(r2, true);
 
          result.Typ := @TypeBool;
-         result.Loc.Typ := ltSkipFalse;
+         if (tok = tkLEqual) and
+            (same(result.Typ, @TypeInteger) or
+             Same(Result.Typ, @TypeReal) or
+             Same(Result.Typ, @TypeLongReal)) then
+            result.Loc.Typ := ltSkipTrue
+         else
+            result.Loc.Typ := ltSkipFalse;
       end;
    end;
 
@@ -3073,7 +2954,7 @@ var fs: TStream;
 
    procedure Statement;
    var d, expr: TExpr;
-       i, cnt: longint;
+       i, cnt, adj: longint;
        r: longword;
        l,l2: word;
        sym, sym2: PSymbol;
@@ -3272,7 +3153,7 @@ var fs: TStream;
                   end;
                inbChunkMove:
                   begin
-
+               Error('Proper procedure called');
                   end;
                inbPut:
                   begin
@@ -3293,6 +3174,90 @@ var fs: TStream;
                      MakeLWritable(d);
                      MakeReadable(expr);
                      Instruction(A_SET, d, MakeAddr(expr));
+                  end;
+               inbHWQ:
+                  begin
+                     r := SpillUsed;
+                     for i := 0 to 6 do regs[i] := i < 4;
+
+                     expr := Expression;
+
+                     if not Same(expr.Typ, @TypeInteger) then error('Index to HWQ must be integer');
+
+                     Instruction(A_SET, RegLoc(5), expr);
+
+                     Consume(tkComma);
+                     d := Designator(true, sym);
+                     if not ((d.Typ^.TypeKind = typArray) and (d.Typ^.ArrayLen = 5) and Same(d.Typ^.BaseType, @TypeInteger)) then error('Second parameter must be an ARRAY 5 OF INTEGER');
+
+                     Instruction(A_SET, RegLoc(6), GetAddr(d));
+
+                     ExtInstruction(A_HWQ, RegLoc(5));
+
+                     Instruction(A_SET, AddOffset(MakeAddr(RegLoc(6)), 0), RegLoc(0));
+                     Instruction(A_SET, AddOffset(MakeAddr(RegLoc(6)), 1), RegLoc(1));
+                     Instruction(A_SET, AddOffset(MakeAddr(RegLoc(6)), 2), RegLoc(2));
+                     Instruction(A_SET, AddOffset(MakeAddr(RegLoc(6)), 3), RegLoc(3));
+                     Instruction(A_SET, AddOffset(MakeAddr(RegLoc(6)), 4), RegLoc(4));
+
+                     Recover(r);
+                  end;
+               inbHWI:
+                  begin
+                     r := SpillUsed;
+                     for i := 0 to 6 do regs[i] := i < 4;
+
+                     expr := Expression;
+                     Instruction(A_SET, PushLoc, expr);
+
+                     unuse(expr);
+                     Consume(tkComma);
+                     d := Designator(true, sym);
+
+                     Instruction(A_SET, PushLoc, RegLoc(7));
+
+                     Instruction(A_SET, RegLoc(7), GetAddr(d));
+
+                     Consume(tkComma);
+                     l := ConstSet;
+                     Consume(tkComma);
+                     l2 := ConstSet;
+
+                     if ((l and $FF00) <> 0) or ((l2 and $FF00) <> 0) then error('Can only use 7 registers in HWI');
+
+                     if not Same(expr.Typ, @TypeInteger) then error('Argument to HWI must be integer');
+                     if not ((d.Typ^.TypeKind = typArray) and (d.Typ^.ArrayLen = 5) and Same(d.Typ^.BaseType, @TypeInteger)) then error('Second parameter must be an ARRAY 5 OF INTEGER');
+
+                     if l2 <> 0 then Instruction(A_SET, PushLoc, RegLoc(7));
+
+                     adj := 0;
+                     for i := 0 to 7 do
+                        if ((1 shl i) and l) <> 0 then
+                        begin
+                           Instruction(A_SET, RegLoc(i), AddOffset(MakeAddr(RegLoc(7)), adj));
+                           inc(adj);
+                        end;
+
+                     if l2 <> 0 then
+                        ExtInstruction(A_HWI, PickLoc(2))
+                     else
+                        ExtInstruction(A_HWI, PickLoc(1));
+
+                     if l2 <> 0 then Instruction(A_SET, RegLoc(7), PopLoc);
+
+                     adj := 0;
+                     for i := 0 to 7 do
+                        if ((1 shl i) and l2) <> 0 then
+                        begin
+                           Instruction(A_SET, AddOffset(MakeAddr(RegLoc(7)), adj), RegLoc(i));
+                           inc(adj);
+                        end;
+
+                     Instruction(A_SET, RegLoc(7), PopLoc);
+
+                     Instruction(A_ADD, RegLoc(V_SP), ConstLoc(1));
+
+                     Recover(r);
                   end;
             else
                Error('Proper procedure called');
@@ -3438,7 +3403,7 @@ var fs: TStream;
                end;
 
                if i < length(sym^.symType^.Fields) then
-                  writeln('Expected more parameters');
+                  Error('Expected more parameters');
             end;
 
             ExtInstruction(A_JSR, d);
@@ -3798,11 +3763,15 @@ begin
    result^.symtab.AddSymbol(InbFunc('ADR',  inbAdr));
    result^.symtab.AddSymbol(InbFunc('SIZE', inbSize));
    result^.symtab.AddSymbol(InbFunc('BIT',  inbBit));
-   result^.symtab.AddSymbol(InbFunc('MULTSHIFT',  inbMultShift));
+
+   result^.symtab.AddSymbol(InbFunc('HWN',  inbHWN));
 
    result^.symtab.AddSymbol(InbFunc('MOVE', inbChunkMove));
    result^.symtab.AddSymbol(InbFunc('GET', inbGet));
    result^.symtab.AddSymbol(InbFunc('PUT', inbPut));
+
+   result^.symtab.AddSymbol(InbFunc('HWQ',  inbHWQ));
+   result^.symtab.AddSymbol(InbFunc('HWI',  inbHWI));
 end;
 
 var i, cnt: longint;
@@ -3905,6 +3874,8 @@ begin
       fs.writebuffer(s[1], length(s));
    end;
    fs.free;
+
+   ExecuteProcess('dcpu16emu.exe', 'mem.dmp');
 
    mods.Free;
    globals.Free;

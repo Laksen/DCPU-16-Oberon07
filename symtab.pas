@@ -83,7 +83,7 @@ type
  end;
 
  TLocType = (ltParam, ltParamRef, ltVar, ltGlobVar,
-             ltPush, ltPop,
+             ltPush, ltPop, ltPick,
              ltReg, ltRegInd, ltConst, ltRegOffset,
              ltSkipFalse, ltSkipTrue);
  TLocation = record

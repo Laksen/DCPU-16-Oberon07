@@ -5,14 +5,15 @@
     <PathDelim Value="\"/>
     <General>
       <Flags>
+        <SaveClosedFiles Value="False"/>
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
       </Flags>
-      <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
       <Title Value="project1"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
+      <ActiveWindowIndexAtStart Value="0"/>
     </General>
     <i18n>
       <EnableI18N LFM="False"/>
@@ -20,7 +21,7 @@
     <VersionInfo>
       <StringTable ProductVersion=""/>
     </VersionInfo>
-    <BuildModes Count="1">
+    <BuildModes Count="1" Active="Default">
       <Item1 Name="Default" Default="True"/>
     </BuildModes>
     <PublishOptions>
@@ -40,33 +41,182 @@
         <Filename Value="doc.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="doc"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="0"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="890"/>
+        <CursorPos X="33" Y="914"/>
+        <UsageCount Value="24"/>
+        <Loaded Value="True"/>
       </Unit0>
       <Unit1>
         <Filename Value="symtab.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="symtab"/>
+        <EditorIndex Value="1"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="67"/>
+        <CursorPos X="36" Y="86"/>
+        <UsageCount Value="24"/>
+        <Loaded Value="True"/>
       </Unit1>
       <Unit2>
         <Filename Value="ntypes.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ntypes"/>
+        <UsageCount Value="24"/>
       </Unit2>
       <Unit3>
         <Filename Value="instr.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="instr"/>
+        <EditorIndex Value="3"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="1"/>
+        <CursorPos X="29" Y="12"/>
+        <UsageCount Value="24"/>
+        <Loaded Value="True"/>
       </Unit3>
       <Unit4>
         <Filename Value="ninbuilt.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ninbuilt"/>
+        <EditorIndex Value="2"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="44"/>
+        <CursorPos X="24" Y="70"/>
+        <UsageCount Value="24"/>
+        <Loaded Value="True"/>
       </Unit4>
       <Unit5>
         <Filename Value="nsystem.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="nsystem"/>
+        <UsageCount Value="24"/>
       </Unit5>
     </Units>
+    <JumpHistory Count="30" HistoryIndex="29">
+      <Position1>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="978" Column="34" TopLine="963"/>
+      </Position1>
+      <Position2>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3206" Column="1" TopLine="3189"/>
+      </Position2>
+      <Position3>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3207" Column="1" TopLine="3189"/>
+      </Position3>
+      <Position4>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="982" Column="1" TopLine="965"/>
+      </Position4>
+      <Position5>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="983" Column="1" TopLine="965"/>
+      </Position5>
+      <Position6>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="985" Column="1" TopLine="965"/>
+      </Position6>
+      <Position7>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="987" Column="1" TopLine="968"/>
+      </Position7>
+      <Position8>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="989" Column="46" TopLine="968"/>
+      </Position8>
+      <Position9>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="61" Column="70" TopLine="55"/>
+      </Position9>
+      <Position10>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3827" Column="28" TopLine="3809"/>
+      </Position10>
+      <Position11>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
+      </Position11>
+      <Position12>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="334" Column="33" TopLine="302"/>
+      </Position12>
+      <Position13>
+        <Filename Value="instr.pas"/>
+        <Caret Line="39" Column="3" TopLine="20"/>
+      </Position13>
+      <Position14>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3831" Column="18" TopLine="3814"/>
+      </Position14>
+      <Position15>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="319" Column="33" TopLine="304"/>
+      </Position15>
+      <Position16>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="338" Column="44" TopLine="316"/>
+      </Position16>
+      <Position17>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="318" Column="61" TopLine="313"/>
+      </Position17>
+      <Position18>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3840" Column="50" TopLine="3829"/>
+      </Position18>
+      <Position19>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="309" Column="11" TopLine="292"/>
+      </Position19>
+      <Position20>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="157" Column="41" TopLine="140"/>
+      </Position20>
+      <Position21>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3868" Column="11" TopLine="3850"/>
+      </Position21>
+      <Position22>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="431" Column="1" TopLine="414"/>
+      </Position22>
+      <Position23>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="927" Column="1" TopLine="910"/>
+      </Position23>
+      <Position24>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2022" Column="1" TopLine="2005"/>
+      </Position24>
+      <Position25>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2154" Column="1" TopLine="2137"/>
+      </Position25>
+      <Position26>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2288" Column="1" TopLine="2271"/>
+      </Position26>
+      <Position27>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2022" Column="1" TopLine="2005"/>
+      </Position27>
+      <Position28>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2283" Column="49" TopLine="2271"/>
+      </Position28>
+      <Position29>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3876" Column="70" TopLine="3850"/>
+      </Position29>
+      <Position30>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="425" Column="99" TopLine="414"/>
+      </Position30>
+    </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
@@ -76,7 +226,6 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="D:\src\synaser\"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>
@@ -84,6 +233,9 @@
         <IOChecks Value="True"/>
         <OverflowChecks Value="True"/>
       </Checks>
+      <Optimizations>
+        <OptimizationLevel Value="2"/>
+      </Optimizations>
     </CodeGeneration>
     <Other>
       <CompilerMessages>

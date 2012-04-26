@@ -59,10 +59,15 @@ type
                  inbAdr,
                  inbSize,
                  inbBit,
+
+                 inbHWN,
                  // System proper
                  inbChunkMove,
                  inbGet,
-                 inbPut);
+                 inbPut,
+
+                 inbHWQ,
+                 inbHWI);
 
 function InbFunc(const AName: string; Func: TInbuiltFunc): PSymbol;
 
