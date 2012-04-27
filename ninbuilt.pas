@@ -46,6 +46,7 @@ type
                  inbLsr,
                  inbAsr,
                  inbRor,
+                 inbAnd,
                  // Type conversion
                  inbFloor,
                  inbFlt,
@@ -62,7 +63,8 @@ type
 
                  inbHWN,
                  // System proper
-                 inbChunkMove,
+                 inbMoveForward,
+                 inbMoveBackward,
                  inbGet,
                  inbPut,
 

@@ -909,6 +909,15 @@ var fs: TStream;
       Instruction(A_ADD, RegLoc(V_PC), ConstLoc($FEFE));
    end;
 
+   procedure ShortJump(ToAddr: word);
+   var ofs: word;
+   begin
+      ofs := codeCounter-ToAddr+1;
+      if ofs >= 29 then
+         inc(ofs);
+      Instruction(A_SUB, RegLoc(V_PC), ConstLoc(ofs));
+   end;
+
    procedure FixJmp(l: word);
    begin
       code[l-1] := codeCounter-l;
@@ -1109,9 +1118,9 @@ var fs: TStream;
             tkMod:
                begin
                   if same(result, @TypeInteger) then
-                     val := val div v2
+                     val := val mod v2
                   else
-                     error('DIV operator does not apply to types');
+                     error('MOD operator does not apply to types');
                end;
             tkAnd:
                begin
@@ -1781,6 +1790,21 @@ var fs: TStream;
 
                      Unuse(tmp);
                   end;
+               inbAnd:
+                  begin
+                     result := Expression;
+                     if not same(result.Typ, @TypeInteger) then Error('AND can only be applied to integers');
+
+                     Consume(tkComma);
+                     tmp := Expression;
+                     if not same(tmp.Typ, @TypeInteger) then Error('AND can only be applied to integers');
+
+                     MakeWritable(result);
+
+                     Instruction(A_AND, result, tmp);
+
+                     Unuse(tmp);
+                  end;
                inbFloor:
                   begin
                      result := Expression;
@@ -2125,7 +2149,7 @@ var fs: TStream;
                      error('Syntax error');
                tkMod:
                   if same(result.Typ, @TypeInteger) then
-                     Instruction(A_MOD, result, r2)
+                     Instruction(A_MDI, result, r2)
                   else
                      error('Syntax error');
                tkAnd:
@@ -2953,10 +2977,10 @@ var fs: TStream;
    end;
 
    procedure Statement;
-   var d, expr: TExpr;
+   var d, expr, len: TExpr;
        i, cnt, adj: longint;
        r: longword;
-       l,l2: word;
+       l,l2,l3: word;
        sym, sym2: PSymbol;
    begin
       if token = tkIdent then
@@ -3151,9 +3175,66 @@ var fs: TStream;
                      else
                         Error('Type error');
                   end;
-               inbChunkMove:
+               inbMoveForward:
                   begin
-               Error('Proper procedure called');
+                     expr := Expression;
+                     Consume(tkComma);
+                     d := Expression;
+                     Consume(tkComma);
+                     len := Expression;
+
+                     if not Same(expr.Typ, @TypeInteger) then error('Source address must be integer');
+                     if not Same(d.Typ, @TypeInteger) then error('Destination address must be integer');
+                     if not Same(len.Typ, @TypeInteger) then error('Length must be integer');
+
+                     Instruction(A_SET, PushLoc, RegLoc(7));
+                     if regs[6] then Instruction(A_SET, PushLoc, RegLoc(6));
+                     if regs[5] then Instruction(A_SET, PushLoc, RegLoc(5));
+
+                     Instruction(A_SET, RegLoc(7), expr);
+                     Instruction(A_SET, RegLoc(6), d);
+                     Instruction(A_SET, RegLoc(5), len);
+
+                     Instruction(A_ADD, RegLoc(5), RegLoc(6));
+
+                     Instruction(A_IFE, regloc(5), RegLoc(6));                      // 1 words
+                     Instruction(A_ADD, RegLoc(V_PC), ConstLoc(2));                 // 1 words
+                     Instruction(A_STI, MakeAddr(RegLoc(6)), MakeAddr(RegLoc(7)));  // 1 words
+                     Instruction(A_SUB, RegLoc(V_PC), ConstLoc(4));                 // 1 words
+
+                     if regs[5] then Instruction(A_SET, RegLoc(5), PushLoc);
+                     if regs[6] then Instruction(A_SET, RegLoc(6), PushLoc);
+                     Instruction(A_SET, RegLoc(7), PopLoc);
+                  end;
+               inbMoveBackward:
+                  begin
+                     expr := Expression;
+                     Consume(tkComma);
+                     d := Expression;
+                     Consume(tkComma);
+                     len := Expression;
+
+                     if not Same(expr.Typ, @TypeInteger) then error('Source address must be integer');
+                     if not Same(d.Typ, @TypeInteger) then error('Destination address must be integer');
+                     if not Same(len.Typ, @TypeInteger) then error('Length must be integer');
+
+                     Instruction(A_SET, PushLoc, RegLoc(7));
+                     if regs[6] then Instruction(A_SET, PushLoc, RegLoc(6));
+                     if regs[5] then Instruction(A_SET, PushLoc, RegLoc(5));
+
+                     Instruction(A_SET, RegLoc(7), expr);
+                     Instruction(A_SET, RegLoc(6), d);
+                     Instruction(A_STD, RegLoc(5), RegLoc(6));
+                     Instruction(A_SUB, RegLoc(5), len);
+
+                     Instruction(A_IFL, regloc(6), RegLoc(5));                      // 1 words
+                     Instruction(A_ADD, RegLoc(V_PC), ConstLoc(2));                 // 1 words
+                     Instruction(A_STD, MakeAddr(RegLoc(6)), MakeAddr(RegLoc(7)));  // 1 words
+                     Instruction(A_SUB, RegLoc(V_PC), ConstLoc(4));                 // 1 words
+
+                     if regs[5] then Instruction(A_SET, RegLoc(5), PushLoc);
+                     if regs[6] then Instruction(A_SET, RegLoc(6), PushLoc);
+                     Instruction(A_SET, RegLoc(7), PopLoc);
                   end;
                inbPut:
                   begin
@@ -3572,6 +3653,11 @@ var fs: TStream;
             id^.symType := FormalParameters
          else
          begin
+            if token = tkNot then
+            begin
+               consume(tkNot);
+               id^.typ := stInterruptFunc;
+            end;
             new(id^.symType);
             id^.symType^.TypeKind := typFunc;
             id^.symType^.FuncRet := nil;
@@ -3766,7 +3852,8 @@ begin
 
    result^.symtab.AddSymbol(InbFunc('HWN',  inbHWN));
 
-   result^.symtab.AddSymbol(InbFunc('MOVE', inbChunkMove));
+   result^.symtab.AddSymbol(InbFunc('MOVEFORWARD', inbMoveForward));
+   result^.symtab.AddSymbol(InbFunc('MOVEBACKWARD', inbMoveBackward));
    result^.symtab.AddSymbol(InbFunc('GET', inbGet));
    result^.symtab.AddSymbol(InbFunc('PUT', inbPut));
 
@@ -3806,6 +3893,7 @@ begin
    globals.AddSymbol(InbFunc('LSR', inbLsr));
    globals.AddSymbol(InbFunc('ASR', inbAsr));
    globals.AddSymbol(InbFunc('ROR', inbRor));
+   globals.AddSymbol(InbFunc('AND', inbAnd));
 
    globals.AddSymbol(InbFunc('FLOOR', inbFloor));
    globals.AddSymbol(InbFunc('FLT', inbFlt));

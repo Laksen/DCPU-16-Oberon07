@@ -7,6 +7,7 @@ interface
 type
  TSymType = (stFunc,
              stInbFunc,
+             stInterruptFunc,
              stVar,
              stParam,
              stConst,

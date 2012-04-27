@@ -20,7 +20,7 @@ type
            A_INT,
            A_IAG,
            A_IAS,
-           A_IAP,
+           A_RFI,
            A_IAQ,
            A_HWN,
            A_HWQ,
