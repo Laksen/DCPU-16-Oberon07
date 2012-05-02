@@ -4,6 +4,8 @@ unit symtab;
 
 interface
 
+uses classes, sysutils;
+
 type
  TSymType = (stFunc,
              stInbFunc,
@@ -28,10 +30,11 @@ type
   Ofs: longint;
  end;
 
+ PSymbol = ^TSymbol;
+
  TType = record
   TypeKind: TTypeKind;
   SimpleKind: TSimpleKind;
-
   ArrayLen: longint;
 
   decl: PType;
@@ -47,11 +50,11 @@ type
 
  TSymTable = class;
 
- PSymbol = ^TSymbol;
  TSymbol = record
   name: string;
   exported: boolean;
   typ: TSymType;
+  module: PSymbol;
 
   typDecl,
   symType: PType;
@@ -83,7 +86,10 @@ type
   destructor Destroy; override;
  end;
 
- TLocType = (ltParam, ltParamRef, ltVar, ltGlobVar,
+ TLocType = (ltParam, ltParamRef, ltVar,
+             ltGlobVarRef, ltGlobVarAddr,
+             ltFunc,
+             ltAbsoluteAddr, ltAbsoluteRef,
              ltPush, ltPop, ltPick,
              ltReg, ltRegInd, ltConst, ltRegOffset,
              ltSkipFalse, ltSkipTrue);
@@ -100,6 +106,7 @@ type
  TExpr = record
   Typ: PType;
   Loc: TLocation;
+  Module: PSymbol;
  end;
 
 function TypSym(const AName: string; var Typ: TType): PSymbol;

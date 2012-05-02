@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="9"/>
+    <BuildModes Active="Default"/>
+    <Units Count="6">
+      <Unit0>
+        <Filename Value="doc.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="doc"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="0"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="3718"/>
+        <CursorPos X="6" Y="3639"/>
+        <UsageCount Value="23"/>
+        <Loaded Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="symtab.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="symtab"/>
+        <EditorIndex Value="1"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="79"/>
+        <CursorPos X="3" Y="95"/>
+        <UsageCount Value="23"/>
+        <Loaded Value="True"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="ntypes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ntypes"/>
+        <UsageCount Value="23"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="instr.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="instr"/>
+        <EditorIndex Value="2"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="6"/>
+        <CursorPos X="8" Y="37"/>
+        <UsageCount Value="23"/>
+        <Loaded Value="True"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="ninbuilt.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ninbuilt"/>
+        <UsageCount Value="23"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="nsystem.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="nsystem"/>
+        <UsageCount Value="23"/>
+      </Unit5>
+    </Units>
+    <General>
+      <ActiveWindowIndexAtStart Value="0"/>
+    </General>
+    <JumpHistory Count="29" HistoryIndex="28">
+      <Position1>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2431" Column="1" TopLine="2420"/>
+      </Position1>
+      <Position2>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2443" Column="1" TopLine="2432"/>
+      </Position2>
+      <Position3>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2454" Column="1" TopLine="2452"/>
+      </Position3>
+      <Position4>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2517" Column="30" TopLine="2506"/>
+      </Position4>
+      <Position5>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2405" Column="1" TopLine="2394"/>
+      </Position5>
+      <Position6>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="398" Column="1" TopLine="387"/>
+      </Position6>
+      <Position7>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
+      </Position7>
+      <Position8>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2010" Column="36" TopLine="1992"/>
+      </Position8>
+      <Position9>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2927" Column="36" TopLine="2909"/>
+      </Position9>
+      <Position10>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="2937" Column="36" TopLine="2919"/>
+      </Position10>
+      <Position11>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3191" Column="42" TopLine="3173"/>
+      </Position11>
+      <Position12>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3212" Column="42" TopLine="3194"/>
+      </Position12>
+      <Position13>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3238" Column="42" TopLine="3220"/>
+      </Position13>
+      <Position14>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3444" Column="33" TopLine="3426"/>
+      </Position14>
+      <Position15>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3861" Column="30" TopLine="3843"/>
+      </Position15>
+      <Position16>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3366" Column="1" TopLine="3352"/>
+      </Position16>
+      <Position17>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3368" Column="1" TopLine="3352"/>
+      </Position17>
+      <Position18>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3372" Column="51" TopLine="3356"/>
+      </Position18>
+      <Position19>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3366" Column="1" TopLine="3356"/>
+      </Position19>
+      <Position20>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3368" Column="1" TopLine="3356"/>
+      </Position20>
+      <Position21>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3370" Column="1" TopLine="3356"/>
+      </Position21>
+      <Position22>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3371" Column="1" TopLine="3356"/>
+      </Position22>
+      <Position23>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3372" Column="1" TopLine="3356"/>
+      </Position23>
+      <Position24>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="3414" Column="35" TopLine="3389"/>
+      </Position24>
+      <Position25>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
+      </Position25>
+      <Position26>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="1939" Column="26" TopLine="1926"/>
+      </Position26>
+      <Position27>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
+      </Position27>
+      <Position28>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="149" Column="30" TopLine="133"/>
+      </Position28>
+      <Position29>
+        <Filename Value="doc.lpr"/>
+        <Caret Line="191" Column="42" TopLine="268"/>
+      </Position29>
+    </JumpHistory>
+  </ProjectSession>
+</CONFIG>

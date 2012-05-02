@@ -4,7 +4,7 @@ unit ninbuilt;
 
 interface
 
-uses symtab, instr;
+uses symtab;
 
 const
  InitSize = 3;
@@ -62,6 +62,9 @@ type
                  inbBit,
 
                  inbHWN,
+                 inbINT,
+                 inbIAS,
+                 inbIAQ,
                  // System proper
                  inbMoveForward,
                  inbMoveBackward,
@@ -69,7 +72,8 @@ type
                  inbPut,
 
                  inbHWQ,
-                 inbHWI);
+                 inbHWI,
+                 inbIAG);
 
 function InbFunc(const AName: string; Func: TInbuiltFunc): PSymbol;
 

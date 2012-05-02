@@ -29,7 +29,7 @@ function IsRecord(a: PType): boolean;
 
 procedure AddField(a: PType; const AName: string; Exported, IsVar: boolean; TypDecl, Typ: PType);
 function HasField(a: PType; const AName: string): boolean;
-function FindField(a: PType; const AName: string; var Ofs: word): PType;
+function FindField(a: PType; const AName: string; out Ofs: word): PType;
 
 implementation
 
@@ -130,7 +130,7 @@ begin
    result := HasField(a, AName);
 end;
 
-function FindField(a: PType; const AName: string; var Ofs: word): PType;
+function FindField(a: PType; const AName: string; out Ofs: word): PType;
 var i: longint;
 begin
    result := nil;

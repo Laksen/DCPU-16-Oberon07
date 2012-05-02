@@ -46,10 +46,5 @@ const
 
 implementation
 
-function Op(AOp: TOp; AA, AB: word): word;
-begin
-   result := ord(AOp) or (AA shl 4) or (AB shl 6);
-end;
-
 end.
 
