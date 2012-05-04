@@ -87,7 +87,8 @@ type
  end;
 
  TLocType = (ltParam, ltParamRef, ltVar,
-             ltGlobVarRef, ltGlobVarAddr,
+             ltGlobVarRef, ltGlobVarAddr, ltGlobVarRegOffset,
+             ltStr,
              ltFunc,
              ltAbsoluteAddr, ltAbsoluteRef,
              ltPush, ltPop, ltPick,

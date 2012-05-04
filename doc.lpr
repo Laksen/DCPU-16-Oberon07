@@ -10,7 +10,7 @@ const
  RealFractionValue = 1 shl RealFractionBits;
 
 type
- TRelocType = (rtCode, rtData);
+ TRelocType = (rtCode, rtData, rtBss);
 
  TReloc = record
   impIdx: longint;
@@ -24,7 +24,10 @@ type
  end;
 
 var code: array[0..$FFFF] of word;
-    codeCounter, dataCounter: word;
+    data: array[0..$FFFF] of word;
+    codeCounter,
+    dataCounter,
+    bssCounter: word;
     InitFunc: word;
 
     imports: array of PSymbol;
@@ -46,13 +49,19 @@ begin
    inc(dataCounter, size);
 end;
 
+function AllocateBss(size: word): word;
+begin
+   result := bssCounter;
+   inc(bssCounter, size);
+end;
+
 function AllocateString(const str: string): word;
 var i: longint;
 begin
    result := AllocateData(length(str)+1);
    for i := 1 to length(str) do
-      code[result+i-1] := ord(str[i]);
-   code[result+length(str)] := 0;
+      data[result+i-1] := ord(str[i]);
+   data[result+length(str)] := 0;
 end;
 
 function GetRecordId(a: PType): word;
@@ -68,7 +77,7 @@ begin
          if a^.Fields[i].Typ^.TypeKind = typPointer then
             inc(cnt);
 
-      result := AllocateData(3+Cnt);
+      result := AllocateBss(3+Cnt);
       a^.RecordID := result;
 
       if assigned(a^.BaseType) then
@@ -172,7 +181,7 @@ begin
 end;
 
 type
- TEmitReloc = (erNone, erCode, erData);
+ TEmitReloc = (erNone, erCode, erData, erBss);
 
 function encode(const a: TExpr; out w: word; out emitword: boolean; out emitreloc: TEmitReloc; lvalue: boolean): byte;
 begin
@@ -213,23 +222,37 @@ begin
       ltGlobVarRef:
          begin
             emitword := true;
-            emitreloc := erData;
+            emitreloc := erBss;
             w := a.Loc.Addr;
             result := $1E;
          end;
       ltGlobVarAddr:
          begin
             emitword := true;
-            emitreloc := erData;
+            emitreloc := erBss;
             w := a.Loc.Addr;
+            result := $1F;
+         end;
+      ltGlobVarRegOffset:
+         begin
+            emitword := true;
+            emitreloc := erBss;
+            w := a.Loc.Addr;
+            result := $10+Ord(a.Loc.Reg);
+         end;
+      ltStr:
+         begin
+            emitword := true;
+            emitreloc := erData;
+            w := a.Loc.Val;
             result := $1F;
          end;
       ltFunc:
          begin
             emitword := true;
             emitreloc := erCode;
-            w := a.Loc.Addr;
-            result := $1E;
+            w := a.Loc.Val;
+            result := $1F;
          end;
       ltAbsoluteAddr:
          begin
@@ -400,6 +423,13 @@ begin
             relocs[high(relocs)].impIdx := FindModule(a.Module);
             relocs[high(relocs)].CodeOffset := codeCounter;
          end;
+      erBss:
+         begin
+            setlength(relocs, high(relocs)+2);
+            relocs[high(relocs)].relocType := rtBss;
+            relocs[high(relocs)].impIdx := FindModule(a.Module);
+            relocs[high(relocs)].CodeOffset := codeCounter;
+         end;
    end;
    if ea then EmitWord(va);
    case rb of
@@ -414,6 +444,13 @@ begin
          begin
             setlength(relocs, high(relocs)+2);
             relocs[high(relocs)].relocType := rtData;
+            relocs[high(relocs)].impIdx := FindModule(b.Module);
+            relocs[high(relocs)].CodeOffset := codeCounter;
+         end;
+      erBss:
+         begin
+            setlength(relocs, high(relocs)+2);
+            relocs[high(relocs)].relocType := rtBss;
             relocs[high(relocs)].impIdx := FindModule(b.Module);
             relocs[high(relocs)].CodeOffset := codeCounter;
          end;
@@ -446,6 +483,13 @@ begin
          begin
             setlength(relocs, high(relocs)+2);
             relocs[high(relocs)].relocType := rtData;
+            relocs[high(relocs)].impIdx := FindModule(a.Module);
+            relocs[high(relocs)].CodeOffset := codeCounter;
+         end;
+      erBss:
+         begin
+            setlength(relocs, high(relocs)+2);
+            relocs[high(relocs)].relocType := rtBss;
             relocs[high(relocs)].impIdx := FindModule(a.Module);
             relocs[high(relocs)].CodeOffset := codeCounter;
          end;
@@ -629,6 +673,8 @@ var fs: TStream;
          ltVar,
          ltRegOffset,
          ltRegInd,
+         ltGlobVarAddr,
+         ltGlobVarRegOffset,
          ltGlobVarRef,
          ltAbsoluteAddr,
          ltAbsoluteRef,
@@ -715,6 +761,12 @@ var fs: TStream;
                result.Loc.Typ := ltAbsoluteRef;
                result.Loc.Addr := Result.Loc.Val;
             end;
+         ltStr:
+            begin
+               result := e;
+               result.Loc.Typ := ltAbsoluteRef;
+               result.Loc.Addr := Result.Loc.Val;
+            end;
          ltVar:
             begin
                result := e;
@@ -792,12 +844,24 @@ var fs: TStream;
    function GetAddr(e: TExpr): TExpr;
    begin
       case e.Loc.Typ of
+         ltStr,
          ltConst:
             result := e;
          ltGlobVarRef:
             begin
                result := e;
                result.Loc.Typ := ltGlobVarAddr;
+            end;
+         ltGlobVarRegOffset:
+            begin
+               result := e;
+               result.Loc.Typ := ltReg;
+               result.Loc.Reg := AllocReg;
+
+               e.Loc.Typ := ltGlobVarAddr;
+
+               Instruction(A_SET, result, RegLoc(e.Loc.Reg));
+               Instruction(A_ADD, result, e);
             end;
          ltAbsoluteRef:
             begin
@@ -878,7 +942,10 @@ var fs: TStream;
                   result.Loc.Offset := ofs;
                end;
             end;
-         ltGlobVarRef: inc(result.Loc.Addr, ofs);
+         ltAbsoluteRef,
+         ltGlobVarRegOffset,
+         ltGlobVarRef:
+            inc(result.Loc.Addr, ofs);
          ltParam:
             begin
                result.Loc.Typ := ltRegOffset;
@@ -944,6 +1011,17 @@ var fs: TStream;
                result := e;
                result.Loc.Typ := ltGlobVarAddr;
             end;
+         ltGlobVarRegOffset:
+            begin
+               result := e;
+               result.Loc.Typ := ltReg;
+               result.Loc.Reg := AllocReg;
+
+               e.Loc.Typ := ltGlobVarAddr;
+
+               Instruction(A_SET, result, RegLoc(e.Loc.Reg));
+               Instruction(A_ADD, result, e);
+            end;
          ltAbsoluteRef:
             begin
                result := e;
@@ -971,11 +1049,19 @@ var fs: TStream;
       end;
    end;
 
+   procedure SwapLoc(var a,b: TExpr);
+   var x: TExpr;
+   begin
+      x := a;
+      a := b;
+      b := x;
+   end;
+
    function IsConst(AExpr: TExpr; out val: word; allowGlob: boolean = false): boolean;
    begin
       {if allowGlob then
-         result := (AExpr.Loc.Typ in [ltConst, ltGlobVar])
-      else
+         result := (AExpr.Loc.Typ in [ltConst, ltGlobVarRef, ltGlobVarAddr])
+      else}
          result := (AExpr.Loc.Typ in [ltConst]);
 
       if result then
@@ -983,11 +1069,11 @@ var fs: TStream;
          case AExpr.loc.Typ of
             ltConst:
                val := AExpr.Loc.Val;
-            ltGlobVar:
-               val := AExpr.Loc.Addr;
+            {ltGlobVarAddr,
+            ltGlobVarRef:
+               val := AExpr.Loc.Addr;}
          end;
-      end;}
-      result := false;
+      end;
    end;
 
    function AddOffset(AExpr, AOffset: TExpr): TExpr;
@@ -1006,7 +1092,19 @@ var fs: TStream;
       end
       else
       begin
-         if (AExpr.Loc.Typ in [ltRegInd, ltRegOffset]) then
+         if (AExpr.Loc.Typ = ltGlobVarRef) and
+            (AOffset.Loc.Typ = ltReg) then
+         begin
+            result := AExpr;
+            result.Loc.Typ := ltGlobVarRegOffset;
+            result.Loc.Reg := AOffset.Loc.Reg;
+         end
+         else if (AExpr.Loc.Typ = ltGlobVarRegOffset) then
+         begin
+            result := AExpr;
+            Instruction(A_ADD, RegLoc(result.Loc.Reg), AOffset);
+         end
+         else if (AExpr.Loc.Typ in [ltRegInd, ltRegOffset]) then
          begin
             result := AExpr;
             Instruction(A_ADD, RegLoc(AExpr.Loc.Reg), AOffset);
@@ -1014,6 +1112,8 @@ var fs: TStream;
          else
          begin
             result := ToAddr(AExpr);
+            if result.Loc.Typ <> ltReg then SwapLoc(result, AOffset);
+            MakeWritable(result);
             MakeReadable(AOffset);
             Instruction(A_ADD, result, AOffset);
             result := MakeAddr(result);
@@ -1748,7 +1848,7 @@ var fs: TStream;
       end
       else if token = tkString then
       begin
-         result.Loc.Typ := ltConst;
+         result.Loc.Typ := ltStr;
          t := pr(tkString);
          result.Loc.val := AllocateString(t);
          result.Typ := ArrayType(length(t), @TypeChar);
@@ -2203,6 +2303,7 @@ var fs: TStream;
    function Term: TExpr;
    var tok: TToken;
        r2, tmp2: TExpr;
+       rval: word;
    begin
       result := Factor;
 
@@ -2258,7 +2359,19 @@ var fs: TStream;
          end
          else
          begin
-            MakeWritable(result);
+            if tok in [tkMul,tkAnd] then
+            begin
+               if (r2.Loc.Typ = ltReg) then
+               begin
+                  tmp2 := result;
+                  result := r2;
+                  r2 := tmp2;
+               end
+               else
+                  MakeWritable(result);
+            end
+            else
+               MakeWritable(result);
 
             case tok of
                tkMul:
@@ -2330,7 +2443,7 @@ var fs: TStream;
 
    function SimpExpr: TExpr;
    var neg: Boolean;
-       r2: TExpr;
+       r2, tmp2: TExpr;
        tok: TToken;
    begin
       neg := (token = tkMinus);
@@ -2423,7 +2536,19 @@ var fs: TStream;
          end
          else
          begin
-            MakeWritable(result);
+            if tok in [tkPlus,tkOr] then
+            begin
+               if (r2.Loc.Typ = ltReg) then
+               begin
+                  tmp2 := result;
+                  result := r2;
+                  r2 := tmp2;
+               end
+               else
+                  MakeWritable(result);
+            end
+            else
+               MakeWritable(result);
             MakeReadable(r2);
 
             case tok of
@@ -2574,14 +2699,14 @@ var fs: TStream;
 
          Unuse(r2, true);
 
-         result.Typ := @TypeBool;
-         if (tok = tkLEqual) and
+         if (tok in [tkLEqual,tkGEqual]) and
             (same(result.Typ, @TypeInteger) or
              Same(Result.Typ, @TypeReal) or
              Same(Result.Typ, @TypeLongReal)) then
             result.Loc.Typ := ltSkipTrue
          else
             result.Loc.Typ := ltSkipFalse;
+         result.Typ := @TypeBool;
       end;
    end;
 
@@ -2749,7 +2874,8 @@ var fs: TStream;
             Unspill(0);
 
             Statements;
-            Instruction(A_SET, RegLoc(V_PC), ConstLoc(AStart));
+            //Instruction(A_SET, RegLoc(V_PC), ConstLoc(AStart));
+            ShortJump(AStart);
 
             FixJmp(lFalse);
          end
@@ -2771,7 +2897,8 @@ var fs: TStream;
             Unspill(0);
 
             Statements;
-            Instruction(A_SET, RegLoc(V_PC), ConstLoc(AStart));
+            //Instruction(A_SET, RegLoc(V_PC), ConstLoc(AStart));
+            ShortJump(AStart);
 
             FixJmp(lFalse);
          end;
@@ -2837,13 +2964,8 @@ var fs: TStream;
          {for i := 0 to high(regs) do regs[i] := false;
          Unspill;}
 
-         d2 := d;
-         MakeWritable(d2);
-
-         Instruction(A_SUB, d2, lim);
-         Instruction(A_SUB, d2, ConstLoc(1));
-         Instruction(A_IFB, d2, ConstLoc($8000));
-         Unuse(d2, true);
+         Instruction(A_IFU, d, lim);
+         //Unuse(d2, true);
          tJmp := AddJmp;
          fJmp := AddJmp;
          FixJmp(tJmp);
@@ -2852,7 +2974,8 @@ var fs: TStream;
 
          Instruction(A_ADD, d, ConstLoc(by));
 
-         Instruction(A_SET, RegLoc(V_PC), ConstLoc(l));
+         //Instruction(A_SET, RegLoc(V_PC), ConstLoc(l));
+         ShortJump(l);
 
          FixJmp(fJmp);
       end
@@ -2863,19 +2986,23 @@ var fs: TStream;
          {for i := 0 to high(regs) do regs[i] := false;
          Unspill;}
 
-         d2 := d;
-         MakeWritable(d2);
+         //d2 := d;
+         //MakeWritable(d2);
 
-         Instruction(A_SUB, d2, lim);
-         Instruction(A_IFB, d2, ConstLoc($8000));
-         Unuse(d2, true);
+         //Instruction(A_SUB, d2, lim);
+         //Instruction(A_IFB, d2, ConstLoc($8000));
+         Instruction(A_IFU, lim, d);
+         //Unuse(d2, true);
+         tJmp := AddJmp;
          fJmp := AddJmp;
+         FixJmp(tJmp);
 
          Statements;
 
          Instruction(A_ADD, d, ConstLoc(by));
 
-         Instruction(A_SET, RegLoc(V_PC), ConstLoc(l));
+         ShortJump(l);
+         //Instruction(A_SET, RegLoc(V_PC), ConstLoc(l));
 
          FixJmp(fJmp);
       end;
@@ -2933,7 +3060,7 @@ var fs: TStream;
                   else
                   begin
                      MakeWritable(r);
-                     Instruction(A_MUL, r, ConstLoc(TypeSize(typ.Typ^.BaseType)));
+                     Instruction(A_MLI, r, ConstLoc(TypeSize(typ.Typ^.BaseType)));
                   end;
                end;
                result := AddOffset(result, r);
@@ -2952,23 +3079,12 @@ var fs: TStream;
                      else
                      begin
                         MakeWritable(r);
-                        Instruction(A_MUL, r, ConstLoc(TypeSize(result.Typ^.BaseType)));
+                        Instruction(A_MLI, r, ConstLoc(TypeSize(result.Typ^.BaseType)));
                      end;
                   end;
                   newt := result.typ^.BaseType;
                   result := AddOffset(result, r);
                   result.Typ := newt;
-                  {r := Expression;
-                  if not Same(r.Typ, @TypeInteger) then Error('Array index must be integer');
-                  if TypeSize(result.Typ^.BaseType) <> 1 then
-                  begin
-                     MakeWritable(r);
-                     Instruction(A_MUL, r, ConstLoc(TypeSize(result.Typ^.BaseType)));
-                  end
-                  else
-                     MakeReadable(r);
-                  Instruction(A_ADD, result, r);
-                  result.Typ := result.Typ^.BaseType;}
                end;
 
                Consume(tkRSquare);
@@ -3091,6 +3207,7 @@ var fs: TStream;
          end;
       end;
 
+      result.Module := s^.module;
       result.Typ := s^.symType;
 
       if s^.typ = stInbFunc then exit;
@@ -3135,7 +3252,8 @@ var fs: TStream;
          IFE r, 0
          SET PC, loop
          }
-         Instruction(A_SET, RegLoc(V_PC), ConstLoc(l));
+         //Instruction(A_SET, RegLoc(V_PC), ConstLoc(l));
+         ShortJump(l);
       end
       else
       begin
@@ -3145,7 +3263,8 @@ var fs: TStream;
          SET PC, loop
          }
          l2 := AddJmp;
-         Instruction(A_SET, RegLoc(V_PC), ConstLoc(l));
+         //Instruction(A_SET, RegLoc(V_PC), ConstLoc(l));
+         ShortJump(l);
          FixJmp(l2);
       end;
    end;
@@ -3731,7 +3850,6 @@ var fs: TStream;
    begin
       n := IdentDef;
       n^.typ := stVar;
-      n^.module := modulesym;
 
       if token = tkColon then
       begin
@@ -3750,7 +3868,7 @@ var fs: TStream;
 
       if global then
       begin
-         n^.ofs := AllocateData(TypeSize(n^.symType));
+         n^.ofs := AllocateBss(TypeSize(n^.symType));
       end
       else
       begin
@@ -3856,7 +3974,6 @@ var fs: TStream;
 
          id^.typ := stFunc;
          id^.symType := nil;
-         id^.module := modulesym;
          if token = tkLParan then
             id^.symType := FormalParameters
          else if token = tkNot then
@@ -4000,8 +4117,11 @@ var fs: TStream;
       s^.exported := false;
       syms.AddSymbol(s);
 
-      setlength(imports, high(imports)+2);
-      imports[high(imports)] := s;
+      if UpperCase(m) <> 'SYSTEM' then
+      begin
+         setlength(imports, high(imports)+2);
+         imports[high(imports)] := s;
+      end;
    end;
 
    procedure ImportList;
@@ -4062,13 +4182,15 @@ var fs: TStream;
    procedure WriteObject(fs: TStream);
    var i, i2: longint;
    const
-    reltyps: array[TRelocType] of word = (0,1);
+    reltyps: array[TRelocType] of word = (0,1,2);
    begin
       // Header
       fs.WriteWord($0B07);
+      fs.WriteWord(InitFunc);
       fs.WriteWord(length(imports));
       fs.WriteWord(codeCounter);
       fs.WriteWord(dataCounter);
+      fs.WriteWord(bssCounter);
       fs.WriteWord(length(relocs));
       fs.WriteWord(length(commands));
 
@@ -4082,6 +4204,9 @@ var fs: TStream;
 
       // Code
       fs.WriteBuffer(code[0], codeCounter*2);
+
+      // Code
+      fs.WriteBuffer(data[0], dataCounter*2);
 
       // Relocs
       for i := 0 to high(relocs) do
@@ -4120,7 +4245,8 @@ begin
 
    codeCounter := 0;
    dataCounter := 0;
-   InitFunc := 0;
+   bssCounter := 0;
+   InitFunc := $FFFF;
 
    setlength(relocs, 0);
    setlength(imports, 0);
